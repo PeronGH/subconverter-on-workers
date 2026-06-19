@@ -4,72 +4,48 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>subconverter</title>
-		<style>
-			body {
-				max-width: 42rem;
-				margin: 2rem auto;
-				padding: 0 1rem;
-				font-family: system-ui, sans-serif;
-				line-height: 1.5;
-			}
-			label {
-				display: block;
-				margin-top: 1rem;
-			}
-			textarea,
-			input,
-			select {
-				width: 100%;
-				box-sizing: border-box;
-			}
-			textarea {
-				height: 6rem;
-			}
-			output {
-				display: block;
-				margin-top: 1rem;
-				word-break: break-all;
-			}
-		</style>
+		<link rel="stylesheet" href="/missing.min.css" />
 	</head>
 	<body>
-		<h1>subconverter</h1>
-		<p>Build a subscription conversion link. The result points back to this worker's <code>/sub</code> endpoint.</p>
+		<main>
+			<h1>subconverter</h1>
+			<p>Build a subscription conversion link. The result points back to this worker's <code>/sub</code> endpoint.</p>
 
-		<form id="form">
-			<label>
-				Subscription URL(s) — one per line
-				<textarea id="urls" placeholder="https://example.com/sub1&#10;https://example.com/sub2" required></textarea>
-			</label>
+			<form id="form">
+				<p>
+					<label for="urls">Subscription URL(s) — one per line</label>
+					<textarea id="urls" rows="4" placeholder="https://example.com/sub1&#10;https://example.com/sub2" required></textarea>
+				</p>
 
-			<label>
-				Target
-				<select id="target">
-					<option value="clash">Clash</option>
-					<option value="clashr">ClashR</option>
-					<option value="singbox">sing-box</option>
-					<option value="surge">Surge</option>
-					<option value="quanx">Quantumult X</option>
-					<option value="loon">Loon</option>
-					<option value="v2ray">V2Ray</option>
-					<option value="ss">SS</option>
-					<option value="ssr">SSR</option>
-					<option value="trojan">Trojan</option>
-					<option value="mixed">Mixed</option>
-				</select>
-			</label>
+				<p>
+					<label for="target">Target</label>
+					<select id="target">
+						<option value="clash">Clash</option>
+						<option value="clashr">ClashR</option>
+						<option value="singbox">sing-box</option>
+						<option value="surge">Surge</option>
+						<option value="quanx">Quantumult X</option>
+						<option value="loon">Loon</option>
+						<option value="v2ray">V2Ray</option>
+						<option value="ss">SS</option>
+						<option value="ssr">SSR</option>
+						<option value="trojan">Trojan</option>
+						<option value="mixed">Mixed</option>
+					</select>
+				</p>
 
-			<label>
-				External config URL (optional)
-				<input id="config" type="text" placeholder="https://example.com/config.ini" />
-			</label>
+				<p>
+					<label for="config">External config URL (optional)</label>
+					<input id="config" type="text" placeholder="https://example.com/config.ini" />
+				</p>
 
-			<label><input id="emoji" type="checkbox" checked /> Add emoji</label>
-			<label><input id="udp" type="checkbox" /> Enable UDP</label>
-		</form>
+				<p><label><input id="emoji" type="checkbox" checked /> Add emoji</label></p>
+				<p><label><input id="udp" type="checkbox" /> Enable UDP</label></p>
+			</form>
 
-		<output id="result"></output>
-		<button id="copy" type="button" hidden>Copy</button>
+			<output id="result" class="block"></output>
+			<button id="copy" type="button" hidden>Copy</button>
+		</main>
 
 		<script>
 			const form = document.getElementById('form');

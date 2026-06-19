@@ -5,18 +5,123 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>subconverter</title>
 		<link rel="stylesheet" href="/pico.min.css" />
+		<style>
+			[x-cloak] {
+				display: none !important;
+			}
+		</style>
+		<script defer src="/alpine.min.js"></script>
+		<script>
+			// Booleans default to subconverter's own defaults; a param is emitted only when changed.
+			const BOOL_DEFAULTS = {
+				emoji: true,
+				add_emoji: true,
+				remove_emoji: true,
+				append_type: false,
+				udp: false,
+				tfo: false,
+				scv: false,
+				tls13: false,
+				fdn: true,
+				sort: false,
+				list: false,
+				append_info: true,
+				insert: true,
+				prepend: true,
+				expand: true,
+				new_name: false,
+				script: false,
+				classic: false,
+				strict: false,
+				upload: false,
+			};
+			const TEXT_PARAMS = [
+				'filename',
+				'group',
+				'include',
+				'exclude',
+				'rename',
+				'ua',
+				'token',
+				'interval',
+				'dev_id',
+				'upload_path',
+				'filter_script',
+				'sort_script',
+			];
+
+			document.addEventListener('alpine:init', () => {
+				Alpine.data('builder', () => ({
+					urls: '',
+					target: 'clash',
+					config: '',
+					...Object.fromEntries(TEXT_PARAMS.map((k) => [k, ''])),
+					...BOOL_DEFAULTS,
+
+					get params() {
+						const p = new URLSearchParams();
+						if (this.target.startsWith('surge') && this.target.length > 5) {
+							p.set('target', 'surge');
+							p.set('ver', this.target.slice(5));
+						} else {
+							p.set('target', this.target);
+						}
+						const urls = this.urls
+							.split('\n')
+							.map((s) => s.trim())
+							.filter(Boolean);
+						if (urls.length) p.set('url', urls.join('|'));
+						if (this.config.trim()) p.set('config', this.config.trim());
+						for (const k of TEXT_PARAMS) if (this[k].trim()) p.set(k, this[k].trim());
+						for (const k in BOOL_DEFAULTS) if (this[k] !== BOOL_DEFAULTS[k]) p.set(k, String(this[k]));
+						return p;
+					},
+					get link() {
+						return `${location.origin}/sub?${this.params.toString()}`;
+					},
+					get providerYaml() {
+						const p = new URLSearchParams(this.params);
+						p.set('target', 'clash');
+						p.delete('ver');
+						p.set('list', 'true');
+						const url = `${location.origin}/sub?${p.toString()}`;
+						return [
+							'proxy-providers:',
+							'  subconverter:',
+							'    type: http',
+							`    url: "${url}"`,
+							'    interval: 3600',
+							'    health-check:',
+							'      enable: true',
+							'      url: https://www.gstatic.com/generate_204',
+							'      interval: 300',
+							'',
+							'# Then reference it from a proxy-group:',
+							'proxy-groups:',
+							'  - name: PROXY',
+							'    type: select',
+							'    use:',
+							'      - subconverter',
+						].join('\n');
+					},
+					copy(text) {
+						navigator.clipboard.writeText(text);
+					},
+				}));
+			});
+		</script>
 	</head>
 	<body>
-		<main class="container">
+		<main class="container" x-data="builder" x-cloak>
 			<hgroup>
 				<h1>subconverter</h1>
 				<p>Build a subscription conversion link. The result points back to this worker's <code>/sub</code> endpoint.</p>
 			</hgroup>
 
-			<form id="form">
+			<form>
 				<label>
 					Subscription URL(s) — one per line
-					<textarea id="urls" rows="4" placeholder="https://example.com/sub1&#10;https://example.com/sub2"></textarea>
+					<textarea x-model="urls" rows="4" placeholder="https://example.com/sub1&#10;https://example.com/sub2"></textarea>
 					<small
 						>Joined with <code>|</code>. Node share links (ss://, vmess://, …) work too. Optional if the server sets a default URL.</small
 					>
@@ -24,7 +129,7 @@
 
 				<label>
 					Target
-					<select id="target">
+					<select x-model="target">
 						<option value="clash">Clash</option>
 						<option value="clashr">ClashR</option>
 						<option value="surge4">Surge 4</option>
@@ -49,78 +154,76 @@
 
 				<label>
 					External config URL (optional)
-					<input id="config" type="text" placeholder="https://example.com/config.ini" />
+					<input x-model="config" type="text" placeholder="https://example.com/config.ini" />
 				</label>
 
 				<details>
 					<summary>Naming &amp; filtering</summary>
-					<label>Filename <input data-param="filename" type="text" placeholder="MySub" /></label>
-					<label>Group name <input data-param="group" type="text" placeholder="MySS (SSD/SSR)" /></label>
-					<label>Include nodes (regex) <input data-param="include" type="text" placeholder="HK|SG" /></label>
-					<label>Exclude nodes (regex) <input data-param="exclude" type="text" placeholder="(流量|官网)" /></label>
-					<label>Rename rules <input data-param="rename" type="text" placeholder="old@new" /></label>
-					<label>Custom User-Agent <input data-param="ua" type="text" placeholder="shadowrocket/2.2.65" /></label>
+					<label>Filename <input x-model="filename" type="text" placeholder="MySub" /></label>
+					<label>Group name <input x-model="group" type="text" placeholder="MySS (SSD/SSR)" /></label>
+					<label>Include nodes (regex) <input x-model="include" type="text" placeholder="HK|SG" /></label>
+					<label>Exclude nodes (regex) <input x-model="exclude" type="text" placeholder="(流量|官网)" /></label>
+					<label>Rename rules <input x-model="rename" type="text" placeholder="old@new" /></label>
+					<label>Custom User-Agent <input x-model="ua" type="text" placeholder="shadowrocket/2.2.65" /></label>
 				</details>
 
 				<details>
 					<summary>Node &amp; output options</summary>
 					<fieldset>
-						<label><input data-bool="emoji" data-default="true" type="checkbox" checked /> Emoji on names</label>
-						<label><input data-bool="add_emoji" data-default="true" type="checkbox" checked /> Add emoji</label>
-						<label><input data-bool="remove_emoji" data-default="true" type="checkbox" checked /> Remove original emoji</label>
-						<label><input data-bool="append_type" data-default="false" type="checkbox" /> Prepend node type (e.g. [SS])</label>
-						<label><input data-bool="udp" data-default="false" type="checkbox" /> Enable UDP</label>
-						<label><input data-bool="tfo" data-default="false" type="checkbox" /> Enable TCP Fast Open</label>
-						<label><input data-bool="scv" data-default="false" type="checkbox" /> Skip TLS cert verify</label>
-						<label><input data-bool="tls13" data-default="false" type="checkbox" /> Force TLS 1.3</label>
-						<label><input data-bool="fdn" data-default="true" type="checkbox" checked /> Filter unsupported nodes</label>
-						<label><input data-bool="sort" data-default="false" type="checkbox" /> Sort nodes by name</label>
-						<label><input data-bool="list" data-default="false" type="checkbox" /> Node list / proxy provider only</label>
-						<label><input data-bool="append_info" data-default="true" type="checkbox" checked /> Append traffic/expiry info</label>
-						<label><input data-bool="insert" data-default="true" type="checkbox" checked /> Insert configured insert_url nodes</label>
-						<label><input data-bool="prepend" data-default="true" type="checkbox" checked /> Prepend inserted nodes</label>
-						<label><input data-bool="expand" data-default="true" type="checkbox" checked /> Expand rules into the config</label>
+						<label><input x-model="emoji" type="checkbox" /> Emoji on names</label>
+						<label><input x-model="add_emoji" type="checkbox" /> Add emoji</label>
+						<label><input x-model="remove_emoji" type="checkbox" /> Remove original emoji</label>
+						<label><input x-model="append_type" type="checkbox" /> Prepend node type (e.g. [SS])</label>
+						<label><input x-model="udp" type="checkbox" /> Enable UDP</label>
+						<label><input x-model="tfo" type="checkbox" /> Enable TCP Fast Open</label>
+						<label><input x-model="scv" type="checkbox" /> Skip TLS cert verify</label>
+						<label><input x-model="tls13" type="checkbox" /> Force TLS 1.3</label>
+						<label><input x-model="fdn" type="checkbox" /> Filter unsupported nodes</label>
+						<label><input x-model="sort" type="checkbox" /> Sort nodes by name</label>
+						<label><input x-model="list" type="checkbox" /> Node list / proxy provider only</label>
+						<label><input x-model="append_info" type="checkbox" /> Append traffic/expiry info</label>
+						<label><input x-model="insert" type="checkbox" /> Insert configured insert_url nodes</label>
+						<label><input x-model="prepend" type="checkbox" /> Prepend inserted nodes</label>
+						<label><input x-model="expand" type="checkbox" /> Expand rules into the config</label>
 					</fieldset>
 				</details>
 
 				<details>
 					<summary>Clash-specific</summary>
 					<fieldset>
-						<label
-							><input data-bool="new_name" data-default="false" type="checkbox" /> New field names (proxies / proxy-groups / rules)</label
-						>
-						<label><input data-bool="script" data-default="false" type="checkbox" /> Generate Clash Script</label>
-						<label><input data-bool="classic" data-default="false" type="checkbox" /> Classical rule-provider</label>
+						<label><input x-model="new_name" type="checkbox" /> New field names (proxies / proxy-groups / rules)</label>
+						<label><input x-model="script" type="checkbox" /> Generate Clash Script</label>
+						<label><input x-model="classic" type="checkbox" /> Classical rule-provider</label>
 					</fieldset>
 				</details>
 
 				<details>
 					<summary>Managed config &amp; Gist upload</summary>
-					<label>Access token <input data-param="token" type="text" placeholder="required for scripts &amp; upload" /></label>
-					<label>Update interval (seconds) <input data-param="interval" type="number" placeholder="43200" /></label>
-					<label>Quantumult X device ID <input data-param="dev_id" type="text" /></label>
-					<label>Gist upload path <input data-param="upload_path" type="text" placeholder="MySS.yaml" /></label>
+					<label>Access token <input x-model="token" type="text" placeholder="required for scripts &amp; upload" /></label>
+					<label>Update interval (seconds) <input x-model="interval" type="number" placeholder="43200" /></label>
+					<label>Quantumult X device ID <input x-model="dev_id" type="text" /></label>
+					<label>Gist upload path <input x-model="upload_path" type="text" placeholder="MySS.yaml" /></label>
 					<fieldset>
-						<label><input data-bool="strict" data-default="false" type="checkbox" /> Strict update (Surge)</label>
-						<label><input data-bool="upload" data-default="false" type="checkbox" /> Upload result to Gist</label>
+						<label><input x-model="strict" type="checkbox" /> Strict update (Surge)</label>
+						<label><input x-model="upload" type="checkbox" /> Upload result to Gist</label>
 					</fieldset>
 				</details>
 
 				<details>
 					<summary>Custom scripts (token required)</summary>
-					<label>Filter script (JS) <textarea data-param="filter_script" rows="3"></textarea></label>
-					<label>Sort script (JS) <textarea data-param="sort_script" rows="3"></textarea></label>
+					<label>Filter script (JS) <textarea x-model="filter_script" rows="3"></textarea></label>
+					<label>Sort script (JS) <textarea x-model="sort_script" rows="3"></textarea></label>
 				</details>
 			</form>
 
-			<article id="output" hidden>
-				<output id="result"></output>
+			<article>
+				<output x-text="link" style="word-break: break-all"></output>
 				<footer>
-					<button id="copy" type="button">Copy link</button>
+					<button type="button" @click="copy(link)">Copy link</button>
 				</footer>
 			</article>
 
-			<article id="provider-card" hidden>
+			<article>
 				<header>
 					<strong>Clash proxy-provider (no conversion)</strong>
 					<p>
@@ -131,91 +234,11 @@
 						>
 					</p>
 				</header>
-				<pre><code id="provider-yaml"></code></pre>
+				<pre><code x-text="providerYaml"></code></pre>
 				<footer>
-					<button id="copy-provider" type="button">Copy YAML</button>
+					<button type="button" @click="copy(providerYaml)">Copy YAML</button>
 				</footer>
 			</article>
 		</main>
-
-		<script>
-			const form = document.getElementById('form');
-			const output = document.getElementById('output');
-			const result = document.getElementById('result');
-			const copy = document.getElementById('copy');
-			const providerCard = document.getElementById('provider-card');
-			const providerYaml = document.getElementById('provider-yaml');
-			const copyProvider = document.getElementById('copy-provider');
-
-			function build() {
-				const params = new URLSearchParams();
-
-				// target (+ Surge version)
-				const t = document.getElementById('target').value;
-				if (t.startsWith('surge') && t.length > 5) {
-					params.set('target', 'surge');
-					params.set('ver', t.slice(5));
-				} else {
-					params.set('target', t);
-				}
-
-				// subscription URL(s)
-				const urls = document
-					.getElementById('urls')
-					.value.split('\n')
-					.map((s) => s.trim())
-					.filter(Boolean);
-				if (urls.length) params.set('url', urls.join('|'));
-
-				const config = document.getElementById('config').value.trim();
-				if (config) params.set('config', config);
-
-				// text/number params — emit only when non-empty
-				for (const el of form.querySelectorAll('[data-param]')) {
-					const v = el.value.trim();
-					if (v) params.set(el.dataset.param, v);
-				}
-
-				// boolean params — emit only when changed from subconverter's default
-				for (const el of form.querySelectorAll('[data-bool]')) {
-					const def = el.dataset.default === 'true';
-					if (el.checked !== def) params.set(el.dataset.bool, String(el.checked));
-				}
-
-				result.textContent = `${location.origin}/sub?${params.toString()}`;
-				output.hidden = false;
-
-				// No-conversion route: same params, forced to a Clash proxy-provider payload.
-				const providerParams = new URLSearchParams(params);
-				providerParams.set('target', 'clash');
-				providerParams.delete('ver');
-				providerParams.set('list', 'true');
-				const providerUrl = `${location.origin}/sub?${providerParams.toString()}`;
-				providerYaml.textContent = [
-					'proxy-providers:',
-					'  subconverter:',
-					'    type: http',
-					`    url: "${providerUrl}"`,
-					'    interval: 3600',
-					'    health-check:',
-					'      enable: true',
-					'      url: https://www.gstatic.com/generate_204',
-					'      interval: 300',
-					'',
-					'# Then reference it from a proxy-group:',
-					'proxy-groups:',
-					'  - name: PROXY',
-					'    type: select',
-					'    use:',
-					'      - subconverter',
-				].join('\n');
-				providerCard.hidden = false;
-			}
-
-			form.addEventListener('input', build);
-			copy.addEventListener('click', () => navigator.clipboard.writeText(result.textContent));
-			copyProvider.addEventListener('click', () => navigator.clipboard.writeText(providerYaml.textContent));
-			build();
-		</script>
 	</body>
 </html>

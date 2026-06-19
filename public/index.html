@@ -119,6 +119,23 @@
 					<button id="copy" type="button">Copy link</button>
 				</footer>
 			</article>
+
+			<article id="provider-card" hidden>
+				<header>
+					<strong>Clash proxy-provider (no conversion)</strong>
+					<p>
+						<small
+							>Keep your own Clash/Mihomo config — pull in only the nodes. This points a <code>proxy-provider</code> at
+							<code>target=clash&amp;list=true</code>, which returns a bare <code>proxies:</code> payload. Your filtering options above
+							still apply.</small
+						>
+					</p>
+				</header>
+				<pre><code id="provider-yaml"></code></pre>
+				<footer>
+					<button id="copy-provider" type="button">Copy YAML</button>
+				</footer>
+			</article>
 		</main>
 
 		<script>
@@ -126,6 +143,9 @@
 			const output = document.getElementById('output');
 			const result = document.getElementById('result');
 			const copy = document.getElementById('copy');
+			const providerCard = document.getElementById('provider-card');
+			const providerYaml = document.getElementById('provider-yaml');
+			const copyProvider = document.getElementById('copy-provider');
 
 			function build() {
 				const params = new URLSearchParams();
@@ -164,10 +184,37 @@
 
 				result.textContent = `${location.origin}/sub?${params.toString()}`;
 				output.hidden = false;
+
+				// No-conversion route: same params, forced to a Clash proxy-provider payload.
+				const providerParams = new URLSearchParams(params);
+				providerParams.set('target', 'clash');
+				providerParams.delete('ver');
+				providerParams.set('list', 'true');
+				const providerUrl = `${location.origin}/sub?${providerParams.toString()}`;
+				providerYaml.textContent = [
+					'proxy-providers:',
+					'  subconverter:',
+					'    type: http',
+					`    url: "${providerUrl}"`,
+					'    interval: 3600',
+					'    health-check:',
+					'      enable: true',
+					'      url: https://www.gstatic.com/generate_204',
+					'      interval: 300',
+					'',
+					'# Then reference it from a proxy-group:',
+					'proxy-groups:',
+					'  - name: PROXY',
+					'    type: select',
+					'    use:',
+					'      - subconverter',
+				].join('\n');
+				providerCard.hidden = false;
 			}
 
 			form.addEventListener('input', build);
 			copy.addEventListener('click', () => navigator.clipboard.writeText(result.textContent));
+			copyProvider.addEventListener('click', () => navigator.clipboard.writeText(providerYaml.textContent));
 			build();
 		</script>
 	</body>

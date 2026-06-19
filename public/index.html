@@ -4,21 +4,23 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>subconverter</title>
-		<link rel="stylesheet" href="/missing.min.css" />
+		<link rel="stylesheet" href="/pico.min.css" />
 	</head>
 	<body>
-		<main>
-			<h1>subconverter</h1>
-			<p>Build a subscription conversion link. The result points back to this worker's <code>/sub</code> endpoint.</p>
+		<main class="container">
+			<hgroup>
+				<h1>subconverter</h1>
+				<p>Build a subscription conversion link. The result points back to this worker's <code>/sub</code> endpoint.</p>
+			</hgroup>
 
 			<form id="form">
-				<p>
-					<label for="urls">Subscription URL(s) — one per line</label>
+				<label>
+					Subscription URL(s) — one per line
 					<textarea id="urls" rows="4" placeholder="https://example.com/sub1&#10;https://example.com/sub2" required></textarea>
-				</p>
+				</label>
 
-				<p>
-					<label for="target">Target</label>
+				<label>
+					Target
 					<select id="target">
 						<option value="clash">Clash</option>
 						<option value="clashr">ClashR</option>
@@ -32,23 +34,30 @@
 						<option value="trojan">Trojan</option>
 						<option value="mixed">Mixed</option>
 					</select>
-				</p>
+				</label>
 
-				<p>
-					<label for="config">External config URL (optional)</label>
+				<label>
+					External config URL (optional)
 					<input id="config" type="text" placeholder="https://example.com/config.ini" />
-				</p>
+				</label>
 
-				<p><label><input id="emoji" type="checkbox" checked /> Add emoji</label></p>
-				<p><label><input id="udp" type="checkbox" /> Enable UDP</label></p>
+				<fieldset>
+					<label><input id="emoji" type="checkbox" checked /> Add emoji</label>
+					<label><input id="udp" type="checkbox" /> Enable UDP</label>
+				</fieldset>
 			</form>
 
-			<output id="result" class="block"></output>
-			<button id="copy" type="button" hidden>Copy</button>
+			<article id="output" hidden>
+				<output id="result"></output>
+				<footer>
+					<button id="copy" type="button">Copy link</button>
+				</footer>
+			</article>
 		</main>
 
 		<script>
 			const form = document.getElementById('form');
+			const output = document.getElementById('output');
 			const result = document.getElementById('result');
 			const copy = document.getElementById('copy');
 
@@ -59,8 +68,7 @@
 					.map((s) => s.trim())
 					.filter(Boolean);
 				if (urls.length === 0) {
-					result.textContent = '';
-					copy.hidden = true;
+					output.hidden = true;
 					return;
 				}
 
@@ -75,7 +83,7 @@
 				params.set('udp', document.getElementById('udp').checked ? 'true' : 'false');
 
 				result.textContent = `${location.origin}/sub?${params.toString()}`;
-				copy.hidden = false;
+				output.hidden = false;
 			}
 
 			form.addEventListener('input', build);

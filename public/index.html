@@ -16,7 +16,10 @@
 			<form id="form">
 				<label>
 					Subscription URL(s) — one per line
-					<textarea id="urls" rows="4" placeholder="https://example.com/sub1&#10;https://example.com/sub2" required></textarea>
+					<textarea id="urls" rows="4" placeholder="https://example.com/sub1&#10;https://example.com/sub2"></textarea>
+					<small
+						>Joined with <code>|</code>. Node share links (ss://, vmess://, …) work too. Optional if the server sets a default URL.</small
+					>
 				</label>
 
 				<label>
@@ -24,15 +27,23 @@
 					<select id="target">
 						<option value="clash">Clash</option>
 						<option value="clashr">ClashR</option>
-						<option value="singbox">sing-box</option>
-						<option value="surge">Surge</option>
+						<option value="surge4">Surge 4</option>
+						<option value="surge3">Surge 3</option>
+						<option value="surge2">Surge 2</option>
+						<option value="surfboard">Surfboard</option>
 						<option value="quanx">Quantumult X</option>
+						<option value="quan">Quantumult</option>
 						<option value="loon">Loon</option>
+						<option value="mellow">Mellow</option>
+						<option value="singbox">sing-box</option>
 						<option value="v2ray">V2Ray</option>
-						<option value="ss">SS</option>
+						<option value="ss">SS (SIP002)</option>
+						<option value="sssub">SS Android (SIP008)</option>
+						<option value="ssd">SSD</option>
 						<option value="ssr">SSR</option>
 						<option value="trojan">Trojan</option>
 						<option value="mixed">Mixed</option>
+						<option value="auto">Auto (by User-Agent)</option>
 					</select>
 				</label>
 
@@ -41,10 +52,65 @@
 					<input id="config" type="text" placeholder="https://example.com/config.ini" />
 				</label>
 
-				<fieldset>
-					<label><input id="emoji" type="checkbox" checked /> Add emoji</label>
-					<label><input id="udp" type="checkbox" /> Enable UDP</label>
-				</fieldset>
+				<details>
+					<summary>Naming &amp; filtering</summary>
+					<label>Filename <input data-param="filename" type="text" placeholder="MySub" /></label>
+					<label>Group name <input data-param="group" type="text" placeholder="MySS (SSD/SSR)" /></label>
+					<label>Include nodes (regex) <input data-param="include" type="text" placeholder="HK|SG" /></label>
+					<label>Exclude nodes (regex) <input data-param="exclude" type="text" placeholder="(流量|官网)" /></label>
+					<label>Rename rules <input data-param="rename" type="text" placeholder="old@new" /></label>
+					<label>Custom User-Agent <input data-param="ua" type="text" placeholder="shadowrocket/2.2.65" /></label>
+				</details>
+
+				<details>
+					<summary>Node &amp; output options</summary>
+					<fieldset>
+						<label><input data-bool="emoji" data-default="true" type="checkbox" checked /> Emoji on names</label>
+						<label><input data-bool="add_emoji" data-default="true" type="checkbox" checked /> Add emoji</label>
+						<label><input data-bool="remove_emoji" data-default="true" type="checkbox" checked /> Remove original emoji</label>
+						<label><input data-bool="append_type" data-default="false" type="checkbox" /> Prepend node type (e.g. [SS])</label>
+						<label><input data-bool="udp" data-default="false" type="checkbox" /> Enable UDP</label>
+						<label><input data-bool="tfo" data-default="false" type="checkbox" /> Enable TCP Fast Open</label>
+						<label><input data-bool="scv" data-default="false" type="checkbox" /> Skip TLS cert verify</label>
+						<label><input data-bool="tls13" data-default="false" type="checkbox" /> Force TLS 1.3</label>
+						<label><input data-bool="fdn" data-default="true" type="checkbox" checked /> Filter unsupported nodes</label>
+						<label><input data-bool="sort" data-default="false" type="checkbox" /> Sort nodes by name</label>
+						<label><input data-bool="list" data-default="false" type="checkbox" /> Node list / proxy provider only</label>
+						<label><input data-bool="append_info" data-default="true" type="checkbox" checked /> Append traffic/expiry info</label>
+						<label><input data-bool="insert" data-default="true" type="checkbox" checked /> Insert configured insert_url nodes</label>
+						<label><input data-bool="prepend" data-default="true" type="checkbox" checked /> Prepend inserted nodes</label>
+						<label><input data-bool="expand" data-default="true" type="checkbox" checked /> Expand rules into the config</label>
+					</fieldset>
+				</details>
+
+				<details>
+					<summary>Clash-specific</summary>
+					<fieldset>
+						<label
+							><input data-bool="new_name" data-default="false" type="checkbox" /> New field names (proxies / proxy-groups / rules)</label
+						>
+						<label><input data-bool="script" data-default="false" type="checkbox" /> Generate Clash Script</label>
+						<label><input data-bool="classic" data-default="false" type="checkbox" /> Classical rule-provider</label>
+					</fieldset>
+				</details>
+
+				<details>
+					<summary>Managed config &amp; Gist upload</summary>
+					<label>Access token <input data-param="token" type="text" placeholder="required for scripts &amp; upload" /></label>
+					<label>Update interval (seconds) <input data-param="interval" type="number" placeholder="43200" /></label>
+					<label>Quantumult X device ID <input data-param="dev_id" type="text" /></label>
+					<label>Gist upload path <input data-param="upload_path" type="text" placeholder="MySS.yaml" /></label>
+					<fieldset>
+						<label><input data-bool="strict" data-default="false" type="checkbox" /> Strict update (Surge)</label>
+						<label><input data-bool="upload" data-default="false" type="checkbox" /> Upload result to Gist</label>
+					</fieldset>
+				</details>
+
+				<details>
+					<summary>Custom scripts (token required)</summary>
+					<label>Filter script (JS) <textarea data-param="filter_script" rows="3"></textarea></label>
+					<label>Sort script (JS) <textarea data-param="sort_script" rows="3"></textarea></label>
+				</details>
 			</form>
 
 			<article id="output" hidden>
@@ -62,25 +128,39 @@
 			const copy = document.getElementById('copy');
 
 			function build() {
+				const params = new URLSearchParams();
+
+				// target (+ Surge version)
+				const t = document.getElementById('target').value;
+				if (t.startsWith('surge') && t.length > 5) {
+					params.set('target', 'surge');
+					params.set('ver', t.slice(5));
+				} else {
+					params.set('target', t);
+				}
+
+				// subscription URL(s)
 				const urls = document
 					.getElementById('urls')
 					.value.split('\n')
 					.map((s) => s.trim())
 					.filter(Boolean);
-				if (urls.length === 0) {
-					output.hidden = true;
-					return;
-				}
+				if (urls.length) params.set('url', urls.join('|'));
 
-				const target = document.getElementById('target').value;
-				const params = new URLSearchParams();
-				params.set('target', target);
-				params.set('url', urls.join('|'));
-				if (target === 'surge') params.set('ver', '4');
 				const config = document.getElementById('config').value.trim();
 				if (config) params.set('config', config);
-				params.set('emoji', document.getElementById('emoji').checked ? 'true' : 'false');
-				params.set('udp', document.getElementById('udp').checked ? 'true' : 'false');
+
+				// text/number params — emit only when non-empty
+				for (const el of form.querySelectorAll('[data-param]')) {
+					const v = el.value.trim();
+					if (v) params.set(el.dataset.param, v);
+				}
+
+				// boolean params — emit only when changed from subconverter's default
+				for (const el of form.querySelectorAll('[data-bool]')) {
+					const def = el.dataset.default === 'true';
+					if (el.checked !== def) params.set(el.dataset.bool, String(el.checked));
+				}
 
 				result.textContent = `${location.origin}/sub?${params.toString()}`;
 				output.hidden = false;
@@ -88,6 +168,7 @@
 
 			form.addEventListener('input', build);
 			copy.addEventListener('click', () => navigator.clipboard.writeText(result.textContent));
+			build();
 		</script>
 	</body>
 </html>

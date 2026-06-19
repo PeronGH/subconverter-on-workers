@@ -1,0 +1,4 @@
+[submodule "subconverter"]
+	path = subconverter
+	url = https://github.com/MetaCubeX/subconverter
+	shallow = true
